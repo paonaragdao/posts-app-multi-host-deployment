@@ -52,6 +52,10 @@ This is the Frontend Posts Service. It is responsible for serving a UI to users 
 ### Image
 The Frontend service image is available at `rmitdominichynes/sdo-2025:frontend`.
 
+### Terraform and Ansible 
+
+Frontend container deployed through Ansible.
+
 
 # Running The Services Locally (In Docker)
 1. Run `docker compose up -d` to start the two services, and a postgres database container.
