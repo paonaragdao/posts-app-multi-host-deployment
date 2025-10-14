@@ -1,77 +1,50 @@
 ---
-- name: Configure EC2 & run Posts DB + Backend
-  hosts: posts
-  become: yes # sudo
-  vars:
-    db_image: "rmitdominichynes/sdo-2025:db"
-    backend_image: "rmitdominichynes/sdo-2025:backend"
-    postgres_db: "posts"
-    postgres_user: "posts"
-    postgres_password: "posts"
-    backend_internal_port: 8081
-    backend_public_port: 80
-
+- hosts: db
+  become: true
   tasks:
-    - name: Install Docker and Python dependencies
-      apt:
-        name:
-          - docker.io
-          - python3-pip
-        state: present
-        update_cache: true
-
-    - name: Install Docker SDK for Python
-      pip:
-        name: docker
-
-    - name: Start Docker service
-      service:
-        name: docker
-        state: started
-        enabled: true
-
-    - name: Create Docker network
-      community.docker.docker_network:
-        name: posts-net
-
-    - name: Run Postgres container
-      community.docker.docker_container:
+    - name: Install Docker
+      apt: { name: [docker.io, python3-pip], state: present, update_cache: true }
+    - pip: { name: docker }
+    - service: { name: docker, state: started, enabled: true }
+    - community.docker.docker_container:
         name: posts-db
-        image: "{{ db_image }}"
+        image: rmitdominichynes/sdo-2025:db
         restart_policy: always
-        networks:
-          - name: posts-net
+        published_ports: ["5432:5432"]
         env:
-          POSTGRES_DB: "{{ postgres_db }}"
-          POSTGRES_USER: "{{ postgres_user }}"
-          POSTGRES_PASSWORD: "{{ postgres_password }}"
-        volumes:
-          - /var/lib/posts-db:/var/lib/postgresql/data
+          POSTGRES_DB: posts
+          POSTGRES_USER: posts
+          POSTGRES_PASSWORD: posts
 
-    - name: Run Backend container
-      community.docker.docker_container:
+- hosts: backend
+  become: true
+  tasks:
+    - name: Install Docker
+      apt: { name: [docker.io, python3-pip], state: present, update_cache: true }
+    - pip: { name: docker }
+    - service: { name: docker, state: started, enabled: true }
+    - community.docker.docker_container:
         name: posts-backend
-        image: "{{ backend_image }}"
+        image: rmitdominichynes/sdo-2025:backend
         restart_policy: always
-        networks:
-          - name: posts-net
-        published_ports:
-          - "{{ backend_public_port }}:{{ backend_internal_port }}"
+        published_ports: ["80:3000"]
         env:
-          DB_HOST: "posts-db"
-          DB_NAME: "{{ postgres_db }}"
-          DB_USER: "{{ postgres_user }}"
-          DB_PASSWORD: "{{ postgres_password }}"
+          DB_HOST: "{{ db_host }}"
+          DB_USER: posts
+          DB_PASSWORD: posts
+          DB_NAME: posts
 
-    - name: Run Frontend container
-      community.docker.docker_container:
+- hosts: frontend
+  become: true
+  tasks:
+    - name: Install Docker
+      apt: { name: [docker.io, python3-pip], state: present, update_cache: true }
+    - pip: { name: docker }
+    - service: { name: docker, state: started, enabled: true }
+    - community.docker.docker_container:
         name: posts-frontend
-        image: "rmitdominichynes/sdo-2025:frontend"
+        image: rmitdominichynes/sdo-2025:frontend
         restart_policy: always
-        networks:
-          - name: posts-net
-        published_ports:
-          - "8081:80"     
+        published_ports: ["8081:80"]
         env:
-          REACT_APP_API_URL: "http://{{ ansible_host }}"   
-
+          REACT_APP_API_URL: "http://{{ backend_host }}"

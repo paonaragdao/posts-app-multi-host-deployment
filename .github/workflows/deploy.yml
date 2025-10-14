@@ -1,0 +1,51 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Terraform Init & Apply
+        run: |
+          cd infra/terraform
+          terraform init -input=false
+          terraform apply -auto-approve -input=false
+
+      - name: Install Ansible
+        run: sudo apt-get update && sudo apt-get install -y ansible python3-pip
+
+      - name: Run Ansible Playbook
+        run: |
+          DB_IP=$(terraform -chdir=infra/terraform output -raw db_ip)
+          BACKEND_IP=$(terraform -chdir=infra/terraform output -raw backend_ip)
+          FRONTEND_IP=$(terraform -chdir=infra/terraform output -raw frontend_ip)
+
+          cat > ansible/inventory.ini <<INV
+          [db]
+          $DB_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+          [backend]
+          $BACKEND_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+          [frontend]
+          $FRONTEND_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+          INV
+
+          ansible-galaxy collection install community.docker
+          ansible-playbook -i ansible/inventory.ini ansible/site.yml
