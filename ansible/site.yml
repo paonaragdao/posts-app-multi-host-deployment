@@ -1,0 +1,64 @@
+---
+- name: Configure EC2 & run Posts DB + Backend
+  hosts: posts
+  become: yes # sudo
+  vars:
+    db_image: "rmitdominichynes/sdo-2025:db"
+    backend_image: "rmitdominichynes/sdo-2025:backend"
+    postgres_db: "posts"
+    postgres_user: "posts"
+    postgres_password: "posts"
+    backend_internal_port: 8081
+    backend_public_port: 80
+
+  tasks:
+    - name: Install Docker and Python dependencies
+      apt:
+        name:
+          - docker.io
+          - python3-pip
+        state: present
+        update_cache: true
+
+    - name: Install Docker SDK for Python
+      pip:
+        name: docker
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create Docker network
+      community.docker.docker_network:
+        name: posts-net
+
+    - name: Run Postgres container
+      community.docker.docker_container:
+        name: posts-db
+        image: "{{ db_image }}"
+        restart_policy: always
+        networks:
+          - name: posts-net
+        env:
+          POSTGRES_DB: "{{ postgres_db }}"
+          POSTGRES_USER: "{{ postgres_user }}"
+          POSTGRES_PASSWORD: "{{ postgres_password }}"
+        volumes:
+          - /var/lib/posts-db:/var/lib/postgresql/data
+
+    - name: Run Backend container
+      community.docker.docker_container:
+        name: posts-backend
+        image: "{{ backend_image }}"
+        restart_policy: always
+        networks:
+          - name: posts-net
+        published_ports:
+          - "{{ backend_public_port }}:{{ backend_internal_port }}"
+        env:
+          DB_HOST: "posts-db"
+          DB_NAME: "{{ postgres_db }}"
+          DB_USER: "{{ postgres_user }}"
+          DB_PASSWORD: "{{ postgres_password }}"

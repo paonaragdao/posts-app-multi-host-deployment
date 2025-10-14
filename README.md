@@ -6,6 +6,17 @@
 ## Backend
 This is the Backend Posts Service. It is responsible for talking to the Posts DB, and exposing an internal HTTP API for managing Posts.
 
+### Terraform and Ansible 
+Posts Service Backend and PostgreSQL Database are deployed to an AWS EC2 instance using Terraform and Ansible
+
+The following setup uses the default VPC that exposes the backend on port 80, and connects it to the database via Docker
+
+| Files              |
+|--------------------|------------------------------------
+| Infra/Terraform    | EC2 + Security Group + Key Pair
+| Ansible/           | Docker Setup and Container Config
+| Scripts/deploy.sh  | Fully automated script
+
 ### Environment Variables
 | Environment Variable | Purpose                                                 |
 |----------------------|---------------------------------------------------------|
@@ -56,3 +67,5 @@ Each container needs:
     - They will also need to be configured to allow the instances to talk to each other, if the services are deployed on different instances.
     - The PostgreSQL database receives inbound traffic on port `5432`
     - The ports used by the Backend and Frontend services are configurable through the `PORT` environment variable. Otherwise, it will default to port `8081`.
+
+
