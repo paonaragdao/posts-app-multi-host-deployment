@@ -10,8 +10,13 @@ terraform init -input=false
 terraform apply -auto-approve -input=false
 
 DB_IP=$(terraform output -raw db_ip)
-BACKEND_IP=$(terraform output -raw backend_ip)
-FRONTEND_IP=$(terraform output -raw frontend_ip)
+BACKEND_ALB=$(terraform output -raw backend_alb_dns)
+FRONTEND_ALB=$(terraform output -raw frontend_alb_dns)
+
+BE_A=$(terraform output -raw backend_a_ip)
+BE_B=$(terraform output -raw backend_b_ip)
+FE_A=$(terraform output -raw frontend_a_ip)
+FE_B=$(terraform output -raw frontend_b_ip)
 popd >/dev/null
 
 echo "[2/5] Writing Ansible inventory"
@@ -21,10 +26,12 @@ cat > "$ROOT_DIR/ansible/inventory.ini" <<INV
 $DB_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_PATH
 
 [backend]
-$BACKEND_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_PATH db_host=$DB_IP
+$BE_A ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_PATH db_host=$DB_IP
+$BE_B ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_PATH db_host=$DB_IP
 
 [frontend]
-$FRONTEND_IP ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_PATH backend_host=$BACKEND_IP
+$FE_A ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_PATH backend_host=$BACKEND_ALB
+$FE_B ansible_user=ubuntu ansible_ssh_private_key_file=$KEY_PATH backend_host=$BACKEND_ALB
 INV
 
 
@@ -36,7 +43,8 @@ ansible-playbook -i "$ROOT_DIR/ansible/inventory.ini" "$ROOT_DIR/ansible/site.ym
 
 echo "[5/5] Done."
 echo "DB Host:        $DB_IP:5432"
-echo "Backend (HTTP): http://$BACKEND_IP/"
-echo "Frontend (HTTP): http://$FRONTEND_IP:8081/"
+echo "Backend (ALB):  http://$BACKEND_ALB/"
+echo "Frontend (ALB): http://$FRONTEND_ALB/"
+
 
 

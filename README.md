@@ -3,7 +3,7 @@
 **Student Name:** Paolo Miguel Naragdao
 **Student Number:** s3939218
 
-Automated full deployment of a **Posts Application** to different AWS EC2 instances using **Terraform** and **Ansible**, through a **GitHub Actions** CI/CD Pipeline that handles automatic provisioning and configuration on every push made to the 'main' branch.
+Automated full deployment of a **Posts Application** to multiple AWS EC2 instances behind Application Load Balancers to distribute Backend and Frontend requests; using **Terraform** and **Ansible**, through a **GitHub Actions** CI/CD Pipeline that handles automatic provisioning and configuration on every push made to the 'main' branch.
 
 
 ## Deployment Summary
@@ -14,16 +14,21 @@ Automated full deployment of a **Posts Application** to different AWS EC2 instan
 | Frontend      | `rmitdominichynes/sdo-2025:frontend`  | 8081 → 80     | `posts-frontend` → React UI     |
 
 ### Terraform
-- Provisions three Ubuntu Instances in the default VPC
-- Creates Security Groups per service
-- Outputs public IPs for Ansible
+- Provisions the following Instances in the default VPC:
+    - 1 x DB Host
+    - 2 x Backend Hosts  | ALB
+    - 2 x Frontend Hosts | ALB
+- Creates Security Groups per service and ALBs
+- Stores Terraform state remotely in an S3 Bucket
+- Outputs ALB Public DNS names
 
 ### Ansible
-- Installs Docker and Python SDK
-- Runs the three Container Image with its required environment variables
+- Installs Docker and Python SDK on hosts
+- Runs the three Container Image with its required environment variables on each EC2 Instance
 
 ### Scripts
 **deploy.sh** overview:
+
 1. Run 'terraform apply'
 2. Generate 'inventory.ini' containing host IPs
 3. Install 'community.docker'

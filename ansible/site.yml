@@ -45,6 +45,6 @@
         name: posts-frontend
         image: rmitdominichynes/sdo-2025:frontend
         restart_policy: always
-        published_ports: ["8081:80"]
+        published_ports: ["8081:8081"]
         env:
           REACT_APP_API_URL: "http://{{ backend_host }}"
