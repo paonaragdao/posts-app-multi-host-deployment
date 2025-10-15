@@ -1,75 +1,41 @@
-# COSC2759 Assignment 2 - Semester 2, 2025
+# Posts App Multi-Host Deployment
+## COSC2759 Assignment 2 - Semester 2, 2025
+**Student Name:** Paolo Miguel Naragdao
+**Student Number:** s3939218
 
-# Services
-
-
-## Backend
-This is the Backend Posts Service. It is responsible for talking to the Posts DB, and exposing an internal HTTP API for managing Posts.
-
-### Terraform and Ansible 
-Posts Service Backend and PostgreSQL Database are deployed to an AWS EC2 instance using Terraform and Ansible
-
-The following setup uses the default VPC that exposes the backend on port 80, and connects it to the database via Docker
-
-| Files              |
-|--------------------|------------------------------------
-| Infra/Terraform    | EC2 + Security Group + Key Pair
-| Ansible/           | Docker Setup and Container Config
-| Scripts/deploy.sh  | Fully automated script
-
-### Environment Variables
-| Environment Variable | Purpose                                                 |
-|----------------------|---------------------------------------------------------|
-| PORT                 | Which port will the service listen on for HTTP requests |
-| DB_USER              | Username for connecting to the Backend DB               |
-| DB_PASSWORD          | Password for connecting to the Backend DB               |
-| DB_HOST              | Hostname/Network address for the Backend DB             |
-
-### Image
-The Backend service image is available at `rmitdominichynes/sdo-2025:backend`.
-
-### Dependencies
-The Backend service depends on a PostgreSQL database, with the required migrations. An image for this has been provided, available at `rmitdominichynes/sdo-2025:db`.
-
-### Database Configuration
-The PostgreSQL Databse container also requires some environment variables to be configured.
-
-|  Environment Variable        |  Purpose                                                  |
-|------------------------------|-----------------------------------------------------------|
-|  POSTGRES_USER               | Username for the Backend Service to use to connect        |
-|  POSTGRES_PASSWORD           | Password for the Backend Service to use to connect        |
-|  POSTGRES_DB                 | "posts"                                                   |
-
-## Frontend
-This is the Frontend Posts Service. It is responsible for serving a UI to users over HTTP. This UI allows them to view and manage Posts.
-
-### Environment Variables
-| Environment Variable | Purpose                                                 |
-|----------------------|---------------------------------------------------------|
-| PORT                 | Which port will the service listen on for HTTP requests |
-| BACKEND_URL          | Fully qualified URL for reaching the Backend Service    |
-
-### Image
-The Frontend service image is available at `rmitdominichynes/sdo-2025:frontend`.
-
-### Terraform and Ansible 
-
-Frontend container deployed through Ansible.
+Automated full deployment of a **Posts Application** to different AWS EC2 instances using **Terraform** and **Ansible**, through a **GitHub Actions** CI/CD Pipeline that handles automatic provisioning and configuration on every push made to the 'main' branch.
 
 
-# Running The Services Locally (In Docker)
-1. Run `docker compose up -d` to start the two services, and a postgres database container.
-2. View the Frontend Posts Service at `http://localhost:8081`, and the Backend Posts Service at `http://localhost:8080`.
+## Deployment Summary
+| Service       | Container Image                       | Port Mapping  | Host Purpose                    |
+|---------------|---------------------------------------|---------------|---------------------------------|
+| Database      | `rmitdominichynes/sdo-2025:db`        | 5432          | `posts-db`       → PostgreSQL   |
+| Backend       | `rmitdominichynes/sdo-2025:backend`   | 80   → 3000   | `posts-backend`  → Node API     |
+| Frontend      | `rmitdominichynes/sdo-2025:frontend`  | 8081 → 80     | `posts-frontend` → React UI     |
 
-# Deploying The Services
+### Terraform
+- Provisions three Ubuntu Instances in the default VPC
+- Creates Security Groups per service
+- Outputs public IPs for Ansible
 
-The services can be deployed to EC2. 
+### Ansible
+- Installs Docker and Python SDK
+- Runs the three Container Image with its required environment variables
 
-Each container needs: 
-- The correct environment variables configured (refer to the above sections)
-- Security Groups will need to be configured to allow traffic to reach the instances. 
-    - They will also need to be configured to allow the instances to talk to each other, if the services are deployed on different instances.
-    - The PostgreSQL database receives inbound traffic on port `5432`
-    - The ports used by the Backend and Frontend services are configurable through the `PORT` environment variable. Otherwise, it will default to port `8081`.
+### Scripts
+**deploy.sh** overview:
+1. Run 'terraform apply'
+2. Generate 'inventory.ini' containing host IPs
+3. Install 'community.docker'
+4. Run 'ansible/site.yml'
+
+### GitHub Actions CI/CD Workflow
+'.github/workflows/deploy.yml'
+
+1. Configure AWS Credentials form GitHub Repo Secrets
+2. Write SSH key from ssh_private_key secret to runner
+3. Runs Terraform Init & Apply
+4. Builds 'inventory.ini'
+5. Executes ansible
 
 
